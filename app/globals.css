@@ -1,0 +1,234 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #fbfaf6;
+  --color-surface: #ffffff;
+  --color-ink: #1e1b18;
+  --color-ink-soft: #5e584f;
+  --color-ink-faint: #8f887c;
+  --color-line: #e8e3d9;
+  --color-line-strong: #cfc8bb;
+
+  --color-lemon: #f7d354;
+  --color-lemon-soft: #fdf3c6;
+  --color-lemon-ink: #6f5200;
+  --color-sky: #5b8def;
+  --color-sky-soft: #dde8fd;
+  --color-sky-ink: #1e4aa6;
+  --color-mint: #3fbf8f;
+  --color-mint-soft: #d6f3e6;
+  --color-mint-ink: #0f6b4a;
+  --color-coral: #f0707e;
+  --color-coral-soft: #fde0e3;
+  --color-coral-ink: #a0263a;
+  --color-danger: #c22f3c;
+
+  --font-sans: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-bricolage), var(--font-figtree), ui-sans-serif, sans-serif;
+
+  --radius-card: 14px;
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Each section owns a highlighter color. Set via data-section on the page wrapper. */
+:root,
+[data-section="write"] {
+  --accent: var(--color-sky);
+  --accent-soft: var(--color-sky-soft);
+  --accent-ink: var(--color-sky-ink);
+}
+[data-section="ideas"] {
+  --accent: var(--color-lemon);
+  --accent-soft: var(--color-lemon-soft);
+  --accent-ink: var(--color-lemon-ink);
+}
+[data-section="posts"] {
+  --accent: var(--color-mint);
+  --accent-soft: var(--color-mint-soft);
+  --accent-ink: var(--color-mint-ink);
+}
+[data-section="voice"] {
+  --accent: var(--color-coral);
+  --accent-soft: var(--color-coral-soft);
+  --accent-ink: var(--color-coral-ink);
+}
+
+html {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  min-height: 100dvh;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.015em;
+  font-variation-settings: "opsz" 48, "wdth" 100;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--color-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-sky);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@layer components {
+  .input {
+    @apply w-full rounded-[10px] border border-line bg-surface px-3.5 py-2.5 text-[15px] text-ink placeholder:text-ink-faint;
+    transition:
+      border-color 180ms var(--ease-soft),
+      box-shadow 180ms var(--ease-soft);
+  }
+  .input:hover {
+    border-color: var(--color-line-strong);
+  }
+  .input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .input:disabled {
+    @apply cursor-not-allowed opacity-50;
+  }
+
+  .btn,
+  .btn-primary,
+  .btn-ghost,
+  .btn-accent {
+    @apply inline-flex min-h-10 cursor-pointer items-center justify-center gap-1.5 rounded-[10px] px-3.5 text-[14px] font-medium whitespace-nowrap select-none;
+    transition:
+      background-color 160ms var(--ease-soft),
+      border-color 160ms var(--ease-soft),
+      color 160ms var(--ease-soft),
+      transform 160ms var(--ease-soft),
+      opacity 160ms var(--ease-soft);
+  }
+  .btn:active,
+  .btn-primary:active,
+  .btn-ghost:active,
+  .btn-accent:active {
+    transform: scale(0.97);
+  }
+  .btn:disabled,
+  .btn-primary:disabled,
+  .btn-ghost:disabled,
+  .btn-accent:disabled {
+    @apply cursor-not-allowed opacity-45;
+    transform: none;
+  }
+  .btn {
+    @apply border border-line bg-surface text-ink;
+  }
+  .btn:hover:not(:disabled) {
+    @apply border-line-strong bg-paper;
+  }
+  .btn-primary {
+    @apply bg-ink text-paper;
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: #35302a;
+  }
+  .btn-ghost {
+    @apply text-ink-soft;
+  }
+  .btn-ghost:hover:not(:disabled) {
+    @apply bg-ink/5 text-ink;
+  }
+  .btn-accent {
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+  }
+  .btn-accent:hover:not(:disabled) {
+    background: color-mix(in oklab, var(--accent-soft), var(--accent) 35%);
+  }
+
+  .card {
+    @apply rounded-card border border-line bg-surface p-5;
+    transition:
+      border-color 180ms var(--ease-soft),
+      transform 180ms var(--ease-soft);
+  }
+  .card-hover:hover {
+    @apply border-line-strong;
+  }
+
+  .label {
+    @apply mb-1.5 block text-[13px] font-medium text-ink-soft;
+  }
+
+  .chip {
+    @apply inline-flex h-6 items-center gap-1 rounded-full px-2 text-[12px] font-medium;
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+  }
+
+  /* The one bold gesture: a marker swipe behind a heading's key word. */
+  .hl {
+    position: relative;
+    display: inline-block;
+    isolation: isolate;
+    padding: 0 0.08em;
+  }
+  .hl::before {
+    content: "";
+    position: absolute;
+    left: -0.1em;
+    right: -0.1em;
+    top: 58%;
+    bottom: 0.04em;
+    background: var(--accent);
+    border-radius: 0.18em;
+    z-index: -1;
+    transform: rotate(-1.2deg);
+    transform-origin: left center;
+    animation: hl-swipe 560ms var(--ease-soft) 120ms both;
+  }
+
+  .spinner {
+    width: 14px;
+    height: 14px;
+    border-radius: 999px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    animation: spin 700ms linear infinite;
+  }
+}
+
+@keyframes hl-swipe {
+  from {
+    transform: scaleX(0) rotate(-1.2deg);
+  }
+  to {
+    transform: scaleX(1) rotate(-1.2deg);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
