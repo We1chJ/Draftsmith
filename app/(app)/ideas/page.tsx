@@ -19,6 +19,12 @@ type Ready = { postId: string; snippet: string };
 const latestDraft = (i: IdeaWithDrafts) =>
   [...i.posts].sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0] as IdeaDraft | undefined;
 
+// The idea is normally deleted once its draft is written; if that cleanup was missed, it's done all the same.
+const isDone = (i: IdeaWithDrafts) => {
+  const d = latestDraft(i);
+  return !!d && !d.generating && !!d.text;
+};
+
 // Ideas exist only until their draft is written; then they're removed and the draft lives in Drafts.
 export default function IdeasPage() {
   const [ideas, setIdeas] = useState<IdeaWithDrafts[] | null>(null);
@@ -30,7 +36,7 @@ export default function IdeasPage() {
 
   const load = useCallback(async () => {
     try {
-      const next = await api<IdeaWithDrafts[]>("/api/ideas");
+      const next = (await api<IdeaWithDrafts[]>("/api/ideas")).filter((i) => !isDone(i));
       // Ideas that were drafting and are now gone have finished: announce their drafts.
       const stillHere = new Set(next.map((i) => i.id));
       const finished = prev.current
@@ -171,8 +177,6 @@ export default function IdeasPage() {
           {ideas?.map((idea) => {
             const draft = latestDraft(idea);
             const failed = !draft || (draft.error && !draft.text) || isStuck(draft);
-            // Normally the idea is deleted once its draft is written; if that cleanup was missed, say so.
-            const leftover = !failed && !draft.generating && !!draft.text;
             return (
               <motion.article
                 key={idea.id}
@@ -195,20 +199,12 @@ export default function IdeasPage() {
                       </button>
                     )}
                   </span>
-                ) : leftover ? (
-                  <span className="inline-flex items-center gap-2 text-[13px] text-ink-soft">
-                    Already drafted.
-                    <Link href={`/write?post=${draft.id}`} className="font-medium underline underline-offset-2">
-                      Open
-                    </Link>
-                  </span>
                 ) : (
                   <span className="inline-flex items-center gap-2 text-[13px] text-(--accent-ink)">
                     <span className="spinner" /> Drafting…
                   </span>
                 )}
                 {failed && <ConfirmButton label="Discard" onConfirm={() => remove(idea.id)} />}
-                {leftover && <ConfirmButton label="Remove" onConfirm={() => remove(idea.id)} />}
               </motion.article>
             );
           })}
