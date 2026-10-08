@@ -18,6 +18,9 @@
   --color-mint: #3fbf8f;
   --color-mint-soft: #d6f3e6;
   --color-mint-ink: #0f6b4a;
+  --color-violet: #8b7cf6;
+  --color-violet-soft: #e9e5fd;
+  --color-violet-ink: #4a3bb5;
   --color-coral: #f0707e;
   --color-coral-soft: #fde0e3;
   --color-coral-ink: #a0263a;
@@ -46,6 +49,11 @@
   --accent: var(--color-mint);
   --accent-soft: var(--color-mint-soft);
   --accent-ink: var(--color-mint-ink);
+}
+[data-section="published"] {
+  --accent: var(--color-violet);
+  --accent-soft: var(--color-violet-soft);
+  --accent-ink: var(--color-violet-ink);
 }
 [data-section="voice"] {
   --accent: var(--color-coral);

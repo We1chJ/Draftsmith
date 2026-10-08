@@ -8,13 +8,15 @@ import { soft } from "@/components/motion";
 
 export const SECTIONS = [
   { href: "/ideas", label: "Ideas", section: "ideas" },
-  { href: "/write", label: "Write", section: "write" },
   { href: "/posts", label: "Drafts", section: "posts" },
+  { href: "/published", label: "Published", section: "published" },
   { href: "/voice", label: "Voice", section: "voice" },
 ] as const;
 
+// The editor (/write) has no nav item; it belongs to Drafts.
 export function sectionFor(path: string) {
-  return SECTIONS.find((s) => path.startsWith(s.href))?.section ?? "write";
+  if (path.startsWith("/write")) return "posts";
+  return SECTIONS.find((s) => path.startsWith(s.href))?.section ?? "ideas";
 }
 
 export function Nav() {
@@ -27,7 +29,7 @@ export function Nav() {
         </Link>
         <nav className="-mx-1 flex min-w-0 flex-1 gap-0.5 overflow-x-auto px-1" aria-label="Sections">
           {SECTIONS.map((s) => {
-            const active = path.startsWith(s.href);
+            const active = sectionFor(path) === s.section;
             return (
               <Link
                 key={s.href}

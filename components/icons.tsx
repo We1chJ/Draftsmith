@@ -89,3 +89,17 @@ export const Tag = (p: Props) => (
     <circle cx="7.5" cy="7.5" r=".5" fill="currentColor" />
   </Icon>
 );
+export const Image = (p: Props) => (
+  <Icon {...p}>
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <circle cx="9" cy="9" r="2" />
+    <path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21" />
+  </Icon>
+);
+export const Info = (p: Props) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="10" />
+    <path d="M12 16v-4" />
+    <path d="M12 8h.01" />
+  </Icon>
+);

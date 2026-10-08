@@ -5,8 +5,6 @@ const optionalText = z.string().trim().nullish().transform((v) => v || null);
 
 export const IdeaInput = z.object({
   text: z.string().trim().min(1),
-  source: optionalText,
-  tags: z.array(z.string().trim().toLowerCase().min(1)).default([]),
 });
 
 export const IdeaPatch = IdeaInput.partial().extend({
@@ -27,19 +25,12 @@ export const VoiceInput = z.object({
   instructions: optionalText,
 });
 
-export const PastPostInput = z.object({
+// A post the user published before (imported by hand). Date is optional.
+export const PublishedInput = z.object({
   title: z.string().trim().min(1).max(120),
   text: z.string().trim().min(1).max(POST_MAX_CHARS),
-  posted_on: z.iso.date().nullish(),
+  published_on: z.iso.date().nullish(),
 });
-
-export const GenerateInput = z
-  .object({
-    idea_id: z.uuid().optional(),
-    text: z.string().trim().min(1).optional(),
-    notes: z.string().trim().optional(),
-  })
-  .refine((v) => v.idea_id || v.text, { message: "idea_id or text is required" });
 
 export const REWRITE_PRESETS = {
   shorter: "Make it noticeably shorter. Keep the core point and the voice.",

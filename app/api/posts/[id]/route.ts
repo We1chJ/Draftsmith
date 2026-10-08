@@ -1,4 +1,5 @@
 import { route, unwrap } from "@/lib/api";
+import { removeAllImages } from "@/lib/images";
 import { PostPatch } from "@/lib/schemas";
 import { db } from "@/lib/supabase/server";
 
@@ -18,5 +19,6 @@ export const PATCH = route<Ctx>(async (req, userId, ctx) => {
 // The DB trigger refuses to delete published posts.
 export const DELETE = route<Ctx>(async (_req, userId, ctx) => {
   const { id } = await ctx.params;
+  await removeAllImages(userId, id);
   unwrap(await db().from("posts").delete().eq("user_id", userId).eq("id", id));
 });

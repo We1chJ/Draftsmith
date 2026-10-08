@@ -1,32 +1,34 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ConfirmButton } from "@/components/confirm-button";
-import { Check, Pen, Plus } from "@/components/icons";
-import { AnimatePresence, Rise, Swap, motion, soft } from "@/components/motion";
+import { ArrowRight, Check, Sparkles } from "@/components/icons";
+import { AnimatePresence, Swap, motion } from "@/components/motion";
 import { PageHeader } from "@/components/page-header";
 import { api } from "@/lib/client";
-import type { PastPost, Voice } from "@/lib/types";
-import { POST_MAX_CHARS } from "@/lib/types";
+import type { Voice } from "@/lib/types";
 
-type CardForm = { title: string; text: string; posted_on: string };
-const EMPTY_CARD: CardForm = { title: "", text: "", posted_on: "" };
+type VoiceState = Voice & { summary_stale: boolean };
 
-const fmtDate = (d: string | null) =>
-  d ? new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : null;
+function timeAgo(iso: string) {
+  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} h ago`;
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
 
 export default function VoicePage() {
-  const [voice, setVoice] = useState<Voice | null>(null);
+  const [voice, setVoice] = useState<VoiceState | null>(null);
   const [instructions, setInstructions] = useState("");
   const [savedInstructions, setSavedInstructions] = useState("");
-  const [savingVoice, setSavingVoice] = useState<"idle" | "saving" | "saved">("idle");
-  const [editing, setEditing] = useState<"new" | string | null>(null);
-  const [card, setCard] = useState<CardForm>(EMPTY_CARD);
-  const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState<"idle" | "saving" | "saved">("idle");
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    api<Voice>("/api/voice")
+    api<VoiceState>("/api/voice")
       .then((v) => {
         setVoice(v);
         setInstructions(v.instructions ?? "");
@@ -35,248 +37,154 @@ export default function VoicePage() {
       .catch((e: Error) => setError(e.message));
   }, []);
 
-  const instructionsDirty = instructions !== savedInstructions;
+  const dirty = instructions !== savedInstructions;
 
   async function saveInstructions() {
-    setSavingVoice("saving");
+    setSaving("saving");
     setError("");
     try {
       await api("/api/voice", { method: "PATCH", body: { instructions } });
       setSavedInstructions(instructions);
-      setSavingVoice("saved");
-      setTimeout(() => setSavingVoice("idle"), 1600);
+      setSaving("saved");
+      setTimeout(() => setSaving("idle"), 1600);
     } catch (e) {
-      setSavingVoice("idle");
+      setSaving("idle");
       setError((e as Error).message);
     }
   }
 
-  function openCard(p?: PastPost) {
+  async function refresh() {
+    setRefreshing(true);
     setError("");
-    setEditing(p?.id ?? "new");
-    setCard(p ? { title: p.title, text: p.text, posted_on: p.posted_on ?? "" } : EMPTY_CARD);
-  }
-
-  async function saveCard(e: React.FormEvent) {
-    e.preventDefault();
-    if (!voice) return;
-    setBusy(true);
-    setError("");
-    const body = { title: card.title, text: card.text, posted_on: card.posted_on || null };
     try {
-      if (editing === "new") {
-        const created = await api<PastPost>("/api/voice/posts", { body });
-        setVoice({ ...voice, posts: [created, ...voice.posts] });
-      } else {
-        const updated = await api<PastPost>(`/api/voice/posts/${editing}`, { method: "PATCH", body });
-        setVoice({ ...voice, posts: voice.posts.map((p) => (p.id === updated.id ? updated : p)) });
-      }
-      setEditing(null);
+      setVoice(await api<VoiceState>("/api/voice/refresh", { method: "POST" }));
     } catch (e) {
       setError((e as Error).message);
     } finally {
-      setBusy(false);
+      setRefreshing(false);
     }
   }
 
-  async function removeCard(id: string) {
-    if (!voice) return;
-    setVoice({ ...voice, posts: voice.posts.filter((p) => p.id !== id) });
-    if (editing === id) setEditing(null);
-    await api(`/api/voice/posts/${id}`, { method: "DELETE" });
-  }
-
-  const posts = voice?.posts ?? [];
-  const sorted = [...posts].sort((a, b) => (b.posted_on ?? "").localeCompare(a.posted_on ?? "") || b.created_at.localeCompare(a.created_at));
-
-  const cardForm = (
-    <motion.form
-      layout
-      onSubmit={saveCard}
-      initial={{ opacity: 0, y: 10, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={soft}
-      className="card space-y-3 border-(--accent) sm:col-span-2"
-    >
-      <div className="grid gap-3 sm:grid-cols-[1fr_170px]">
-        <div>
-          <label htmlFor="title" className="label">
-            Title
-          </label>
-          <input
-            id="title"
-            required
-            autoFocus
-            className="input"
-            placeholder="A short label you'll recognize"
-            value={card.title}
-            onChange={(e) => setCard({ ...card, title: e.target.value })}
-          />
-        </div>
-        <div>
-          <label htmlFor="posted_on" className="label">
-            Date posted <span className="font-normal text-ink-faint">(optional)</span>
-          </label>
-          <input
-            id="posted_on"
-            type="date"
-            className="input"
-            value={card.posted_on}
-            onChange={(e) => setCard({ ...card, posted_on: e.target.value })}
-          />
-        </div>
-      </div>
-      <div>
-        <label htmlFor="text" className="label">
-          The post
-        </label>
-        <textarea
-          id="text"
-          required
-          rows={8}
-          maxLength={POST_MAX_CHARS}
-          className="input resize-y text-[14px] leading-[1.55]"
-          placeholder="Paste it exactly as you posted it"
-          value={card.text}
-          onChange={(e) => setCard({ ...card, text: e.target.value })}
-        />
-      </div>
-      {error && (
-        <p role="alert" className="text-[14px] text-danger">
-          {error}
-        </p>
-      )}
-      <div className="flex items-center gap-2">
-        <button className="btn-primary" disabled={busy}>
-          {busy && <span className="spinner" />}
-          <Swap id={busy ? "busy" : "idle"}>{busy ? "Saving" : editing === "new" ? "Add to history" : "Save changes"}</Swap>
-        </button>
-        <button type="button" className="btn-ghost" onClick={() => setEditing(null)}>
-          Cancel
-        </button>
-        {editing !== "new" && editing && <ConfirmButton className="ml-auto" onConfirm={() => removeCard(editing)} />}
-      </div>
-    </motion.form>
-  );
+  const count = voice?.published_count ?? 0;
 
   return (
     <>
       <PageHeader
         mark="Voice"
-        subtitle="How you want to sound, and the posts that prove it. The writer reads both every time."
+        subtitle="Two things shape every draft: what you tell the writer, and what it notices in your published posts."
       />
 
-      {/* Instructions */}
-      <section className="card mb-8 space-y-3">
-        <label htmlFor="instructions" className="label">
-          Instructions for the writer
-        </label>
-        <textarea
-          id="instructions"
-          rows={6}
-          className="input resize-y leading-[1.55]"
-          placeholder={
-            "Anything the writer should know. Concrete beats vague.\n\n" +
-            "Short sentences. First person. Open with a plain statement, never a question. " +
-            "One idea per post. No emoji. Never say 'game-changer' or 'unlock'. Keep it under 1,300 characters."
-          }
-          value={instructions}
-          onChange={(e) => setInstructions(e.target.value)}
-          disabled={voice === null}
-        />
-        <div className="flex items-center gap-3">
-          <button
-            className="btn-primary min-w-36"
-            disabled={!instructionsDirty || savingVoice === "saving"}
-            onClick={saveInstructions}
-          >
-            {savingVoice === "saving" ? <span className="spinner" /> : savingVoice === "saved" ? <Check size={16} /> : null}
-            <Swap id={savingVoice}>
-              {savingVoice === "saving" ? "Saving" : savingVoice === "saved" ? "Saved" : "Save instructions"}
-            </Swap>
-          </button>
-          <Swap id={instructionsDirty ? "dirty" : "clean"} className="text-[12px] text-ink-faint">
-            {instructionsDirty ? "Unsaved changes" : ""}
-          </Swap>
-        </div>
-      </section>
-
-      {/* History */}
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="text-[24px] leading-none font-semibold">Past posts</h2>
-          <p className="mt-1.5 text-[14px] text-ink-soft">
-            Your history.{" "}
-            {posts.length > 10 ? "The newest 10 are sent to the writer as voice examples." : "All of them are sent to the writer as voice examples."}
-          </p>
-        </div>
-        <button className="btn-accent" onClick={() => openCard()} disabled={editing === "new"}>
-          <Plus size={16} /> Add a past post
-        </button>
-      </div>
-
-      {voice === null && !error && <p className="text-[14px] text-ink-faint">Loading…</p>}
       {voice === null && error && (
-        <p role="alert" className="rounded-[10px] bg-coral-soft px-3 py-2 text-[14px] text-coral-ink">
+        <p role="alert" className="mb-6 rounded-[10px] bg-coral-soft px-3 py-2 text-[14px] text-coral-ink">
           Couldn&apos;t load your voice: {error}
         </p>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <AnimatePresence initial={false} mode="popLayout">
-          {editing === "new" && <motion.div key="new" layout className="sm:col-span-2">{cardForm}</motion.div>}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Instructions: written by the user, read by the app. */}
+        <section className="card space-y-3">
+          <div>
+            <label htmlFor="instructions" className="label">
+              Your instructions
+            </label>
+            <p className="-mt-0.5 mb-2 text-[13px] text-ink-faint">
+              Anything the writer should always do or never do. These win over everything else.
+            </p>
+          </div>
+          <textarea
+            id="instructions"
+            rows={12}
+            className="input resize-y leading-[1.55]"
+            placeholder={
+              "Concrete beats vague.\n\n" +
+              "Short sentences. First person. Open with a plain statement, never a question. " +
+              "One idea per post. No emoji. Never say 'game-changer' or 'unlock'. Keep it under 1,300 characters."
+            }
+            value={instructions}
+            onChange={(e) => setInstructions(e.target.value)}
+            disabled={voice === null}
+          />
+          <div className="flex items-center gap-3">
+            <button className="btn-primary min-w-36" disabled={!dirty || saving === "saving"} onClick={saveInstructions}>
+              {saving === "saving" ? <span className="spinner" /> : saving === "saved" ? <Check size={16} /> : null}
+              <Swap id={saving}>{saving === "saving" ? "Saving" : saving === "saved" ? "Saved" : "Save instructions"}</Swap>
+            </button>
+            <Swap id={dirty ? "dirty" : "clean"} className="text-[12px] text-ink-faint">
+              {dirty ? "Unsaved changes" : ""}
+            </Swap>
+          </div>
+        </section>
 
-          {voice && posts.length === 0 && editing !== "new" && (
-            <Rise key="empty" className="card flex flex-col items-start gap-3 border-dashed p-8 sm:col-span-2">
-              <span className="grid h-10 w-10 place-items-center rounded-full bg-(--accent-soft) text-(--accent-ink)">
-                <Pen size={18} />
-              </span>
-              <div>
-                <p className="font-display text-[20px] font-semibold">No past posts yet</p>
-                <p className="mt-1 text-[14px] text-ink-soft">
-                  Paste three to five posts you were happy with. That&apos;s the fastest way to get your voice right.
-                </p>
-              </div>
-              <button className="btn-accent" onClick={() => openCard()}>
-                <Plus size={16} /> Add a past post
+        {/* Summary: written by the app, read by the user. */}
+        <section className="card flex flex-col space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <span className="label mb-0">What the writer has noticed</span>
+              <p className="mt-1 text-[13px] text-ink-faint">
+                {count === 0
+                  ? "Appears once you have published posts."
+                  : voice?.summary_updated_at
+                    ? `From ${voice.summary_post_count ?? count} published ${
+                        (voice.summary_post_count ?? count) === 1 ? "post" : "posts"
+                      } · updated ${timeAgo(voice.summary_updated_at)}`
+                    : `${count} published ${count === 1 ? "post" : "posts"} waiting to be read.`}
+              </p>
+            </div>
+            {count > 0 && (
+              <button className="btn min-h-9 shrink-0" disabled={refreshing} onClick={refresh}>
+                {refreshing ? <span className="spinner" /> : <Sparkles size={15} />}
+                <Swap id={refreshing ? "r" : "i"}>{refreshing ? "Reading" : "Refresh"}</Swap>
               </button>
-            </Rise>
-          )}
+            )}
+          </div>
 
-          {sorted.map((p) =>
-            editing === p.id ? (
-              <motion.div key={p.id} layout className="sm:col-span-2">
-                {cardForm}
-              </motion.div>
-            ) : (
-              <motion.article
-                key={p.id}
-                layout
-                initial={{ opacity: 0, y: 12, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.14 } }}
-                transition={soft}
-                className="card card-hover group flex flex-col"
+          <AnimatePresence initial={false}>
+            {voice?.summary_stale && !refreshing && (
+              <motion.p
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="rounded-[10px] bg-(--accent-soft) px-3 py-2 text-[13px] text-(--accent-ink)"
               >
-                <div className="mb-2 flex items-start justify-between gap-3">
-                  <h3 className="text-[17px] leading-snug font-semibold">{p.title}</h3>
-                  <button
-                    aria-label="Edit"
-                    className="btn-ghost -mt-1 -mr-2 min-h-8 px-2 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-                    onClick={() => openCard(p)}
-                  >
-                    <Pen size={15} />
-                  </button>
+                Your published posts changed since this was written. It refreshes on its own before the next draft, or
+                now with Refresh.
+              </motion.p>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={voice?.summary_updated_at ?? "none"}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, transition: { duration: 0.12 } }}
+              className="flex-1 text-[15px] leading-[1.6] whitespace-pre-wrap"
+            >
+              {voice?.summary ? (
+                voice.summary
+              ) : (
+                <div className="flex h-full flex-col items-start justify-center gap-3 rounded-[10px] border border-dashed border-line p-6 text-[14px] text-ink-soft">
+                  {count === 0 ? (
+                    <>
+                      <p>Add the posts you&apos;ve already published and the writer will describe your style here.</p>
+                      <Link href="/published" className="btn-accent">
+                        Go to Published <ArrowRight size={15} />
+                      </Link>
+                    </>
+                  ) : (
+                    <p>Click Refresh to have the writer read your published posts.</p>
+                  )}
                 </div>
-                <p className="line-clamp-6 text-[14px] leading-[1.55] whitespace-pre-wrap text-ink-soft">{p.text}</p>
-                <div className="mt-auto flex items-center gap-2 pt-4 text-[12px] text-ink-faint">
-                  {fmtDate(p.posted_on) && <span className="chip">{fmtDate(p.posted_on)}</span>}
-                  <span className="tabular-nums">{p.text.length.toLocaleString()} chars</span>
-                </div>
-              </motion.article>
-            ),
+              )}
+            </motion.div>
+          </AnimatePresence>
+
+          {error && voice && (
+            <p role="alert" className="text-[14px] text-danger">
+              {error}
+            </p>
           )}
-        </AnimatePresence>
+        </section>
       </div>
     </>
   );

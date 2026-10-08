@@ -4,35 +4,51 @@ export type PostStatus = "draft" | "approved" | "scheduled" | "publishing" | "pu
 export type Idea = {
   id: string;
   text: string;
-  source: string | null;
-  tags: string[];
   status: IdeaStatus;
   created_at: string;
 };
 
+// One timeline. Drafts and published history are the same table, told apart by status.
 export type Post = {
   id: string;
   idea_id: string | null;
+  title: string | null;
   text: string;
   status: PostStatus;
+  origin: "app" | "imported";
+  published_at: string | null;
   created_at: string;
   updated_at: string;
+  /** True while the draft is being written in the background. */
+  generating?: boolean;
+  error?: string | null;
+  /** Present on list endpoints. */
+  image_count?: number;
 };
 
-// A post the user actually published before. The history is also the writer's example set.
-export type PastPost = {
-  id: string;
-  title: string;
-  text: string;
-  posted_on: string | null;
-  created_at: string;
-};
+export type IdeaDraft = Pick<Post, "id" | "text" | "status" | "generating" | "error" | "updated_at">;
+export type IdeaWithDrafts = Idea & { posts: IdeaDraft[] };
 
 export type Voice = {
   instructions: string | null;
-  posts: PastPost[];
+  summary: string | null;
+  summary_updated_at: string | null;
+  summary_post_count: number | null;
+  published_count: number;
+  /** Newest published posts, used verbatim as examples. */
+  examples: Pick<Post, "id" | "title" | "text">[];
 };
 
-export type Variant = { hook: string; text: string };
+export type PostImage = {
+  id: string;
+  alt: string | null;
+  position: number;
+  mime: string;
+  bytes: number | null;
+  /** Signed, short-lived URL for display. */
+  url: string;
+};
 
 export const POST_MAX_CHARS = 3000;
+/** How many published posts go into every prompt verbatim. */
+export const EXAMPLE_LIMIT = 10;

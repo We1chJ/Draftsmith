@@ -4,9 +4,15 @@ import { db } from "@/lib/supabase/server";
 
 export const GET = route(async (req, userId) => {
   const status = new URL(req.url).searchParams.get("status");
-  let q = db().from("posts").select("*").eq("user_id", userId).order("updated_at", { ascending: false });
-  if (status) q = q.eq("status", status);
-  return unwrap(await q);
+  let q = db()
+    .from("posts")
+    .select("id,idea_id,title,text,status,origin,published_at,created_at,updated_at,generating,error,post_images(count)")
+    .eq("user_id", userId)
+    .order("updated_at", { ascending: false });
+  // Published history has its own route; this list is the working set.
+  q = status ? q.eq("status", status) : q.neq("status", "published");
+  const rows = unwrap(await q) as (Record<string, unknown> & { post_images: { count: number }[] })[];
+  return rows.map(({ post_images, ...p }) => ({ ...p, image_count: post_images?.[0]?.count ?? 0 }));
 });
 
 // Always creates a draft; nothing here can approve, schedule, or publish (N2).

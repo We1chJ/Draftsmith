@@ -3,26 +3,33 @@ import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
 import { HttpError } from "@/lib/api";
-import type { Variant, Voice } from "@/lib/types";
+import type { Post, Voice } from "@/lib/types";
 import { POST_MAX_CHARS } from "@/lib/types";
 
-const MODEL = process.env.OPENAI_MODEL || "gpt-5.5";
+const MODEL = process.env.OPENAI_MODEL || "gpt-4.1-mini";
 const client = new OpenAI();
 
 function voiceBlock(voice: Voice): string[] {
   const parts: string[] = [];
   if (voice.instructions) {
-    parts.push(`<instructions_from_author>\n${voice.instructions}\n</instructions_from_author>`);
+    parts.push(
+      `The author's own instructions. These take priority over everything below.\n<instructions_from_author>\n${voice.instructions}\n</instructions_from_author>`,
+    );
   }
-  if (voice.posts.length > 0) {
-    const items = voice.posts
-      .map((p, i) => `<post n="${i + 1}" title="${p.title.replace(/"/g, "'")}">\n${p.text}\n</post>`)
+  if (voice.summary) {
+    parts.push(
+      `Observations about how the author writes, drawn from all ${voice.summary_post_count ?? ""} of their published posts.\n<observed_style>\n${voice.summary}\n</observed_style>`,
+    );
+  }
+  if (voice.examples.length > 0) {
+    const items = voice.examples
+      .map((p, i) => `<post n="${i + 1}"${p.title ? ` title="${p.title.replace(/"/g, "'")}"` : ""}>\n${p.text}\n</post>`)
       .join("\n\n");
     parts.push(
       [
-        "These are posts the author actually published. Match their voice: sentence length, rhythm, how they open, how they end, what they leave out.",
+        "The author's most recent published posts. Match their voice: sentence length, rhythm, how they open, how they end, what they leave out.",
         "Never reuse their content, stories, or specific phrases. Only the idea you are given supplies the content.",
-        `<past_posts>\n${items}\n</past_posts>`,
+        `<published_posts>\n${items}\n</published_posts>`,
       ].join("\n"),
     );
   }
@@ -56,25 +63,15 @@ async function ask<T extends z.ZodType>(system: string, user: string, schema: T)
   return response.output_parsed as z.infer<T>;
 }
 
-const VariantsSchema = z.object({
-  variants: z.array(z.object({ hook: z.string(), text: z.string() })),
-});
+const DraftSchema = z.object({ text: z.string() });
 
-export async function generateVariants(opts: {
-  authorName: string;
-  voice: Voice;
-  idea: string;
-  notes?: string;
-}): Promise<Variant[]> {
+export async function generateDraft(opts: { authorName: string; voice: Voice; idea: string }): Promise<string> {
   const user = [
     `<idea>\n${opts.idea}\n</idea>`,
-    opts.notes && `<notes>\n${opts.notes}\n</notes>`,
-    "Write 3 distinct variants of a LinkedIn post from this idea. Each variant must open with a different hook. In `hook`, put just the opening line; in `text`, the full post including that opening line.",
-  ]
-    .filter(Boolean)
-    .join("\n\n");
-  const { variants } = await ask(systemPrompt(opts.authorName, opts.voice), user, VariantsSchema);
-  return variants.slice(0, 3);
+    "Write one LinkedIn post from this idea. Return the full post in `text`.",
+  ].join("\n\n");
+  const { text } = await ask(systemPrompt(opts.authorName, opts.voice), user, DraftSchema);
+  return text.trim();
 }
 
 const RewriteSchema = z.object({ text: z.string() });
@@ -92,4 +89,20 @@ export async function rewriteDraft(opts: {
   ].join("\n\n");
   const { text } = await ask(systemPrompt(opts.authorName, opts.voice), user, RewriteSchema);
   return text;
+}
+
+const SummarySchema = z.object({ summary: z.string() });
+
+// Reads every published post and describes how the author writes. Observations only,
+// no advice and no quoting; the result is shown to the author and fed into every prompt.
+export async function summarizeVoice(posts: Pick<Post, "title" | "text">[]): Promise<string> {
+  const corpus = posts.map((p, i) => `<post n="${i + 1}">\n${p.text}\n</post>`).join("\n\n");
+  const system = [
+    "You study a writer's published LinkedIn posts and describe how they write, so a ghostwriter can match them.",
+    "Describe only what is observable: how posts open, sentence and paragraph length, rhythm, point of view, how they end, recurring structures, punctuation habits, what they never do.",
+    "Be concrete and specific to this writer. No praise, no advice, no generic statements that would fit anyone. Do not quote or retell their content.",
+    "Write plain prose, 120 to 250 words, as a single block with short paragraphs. Second person is fine ('You open with...').",
+  ].join("\n");
+  const { summary } = await ask(system, `<published_posts>\n${corpus}\n</published_posts>`, SummarySchema);
+  return summary.trim();
 }

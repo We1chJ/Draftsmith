@@ -1,23 +1,14 @@
 import { Suspense } from "react";
-import { Writer } from "./writer";
+import { WriterFromParams } from "./writer-from-params";
 
 export const metadata = { title: "Write" };
 
-async function WriterFromParams({ searchParams }: PageProps<"/write">) {
-  const { idea, post } = await searchParams;
-  return (
-    <Writer
-      key={`${idea ?? ""}-${post ?? ""}`}
-      ideaId={typeof idea === "string" ? idea : undefined}
-      postId={typeof post === "string" ? post : undefined}
-    />
-  );
-}
-
-export default function WritePage(props: PageProps<"/write">) {
+// Query params are read on the client (useSearchParams) so a direct load of /write?post=…
+// doesn't depend on the server resuming a partially prerendered shell.
+export default function WritePage() {
   return (
     <Suspense fallback={<p className="text-[14px] text-ink-faint">Loading…</p>}>
-      <WriterFromParams {...props} />
+      <WriterFromParams />
     </Suspense>
   );
 }

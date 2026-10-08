@@ -1,5 +1,6 @@
 import { HttpError, route } from "@/lib/api";
-import { getAuthorName, getVoiceForWriter } from "@/lib/data";
+import { getAuthorName } from "@/lib/data";
+import { getFreshVoice } from "@/lib/voice-summary";
 import { REWRITE_PRESETS, RewriteInput } from "@/lib/schemas";
 import { rewriteDraft } from "@/lib/writer";
 
@@ -9,7 +10,7 @@ export const POST = route(async (req, userId) => {
     .filter(Boolean)
     .join(" ");
   if (!instruction) throw new HttpError(400, "preset or instruction is required");
-  const [authorName, voice] = await Promise.all([getAuthorName(userId), getVoiceForWriter(userId)]);
+  const [authorName, voice] = await Promise.all([getAuthorName(userId), getFreshVoice(userId)]);
   const text = await rewriteDraft({ authorName, voice, text: input.text, instruction });
   return { text };
 });

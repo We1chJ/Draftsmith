@@ -1,9 +1,12 @@
 import { route, unwrap } from "@/lib/api";
-import { getVoice } from "@/lib/data";
+import { getVoice, isSummaryStale } from "@/lib/data";
 import { VoiceInput } from "@/lib/schemas";
 import { db } from "@/lib/supabase/server";
 
-export const GET = route(async (_req, userId) => getVoice(userId));
+export const GET = route(async (_req, userId) => {
+  const voice = await getVoice(userId);
+  return { ...voice, summary_stale: await isSummaryStale(userId, voice) };
+});
 
 // Saves the instructions. Creates the profile row if this is the first save.
 export const PATCH = route(async (req, userId) => {

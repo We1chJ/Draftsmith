@@ -6,13 +6,13 @@ type Ctx = RouteContext<"/api/ideas/[id]">;
 
 export const GET = route<Ctx>(async (_req, userId, ctx) => {
   const { id } = await ctx.params;
-  return unwrap(await db().from("ideas").select("*").eq("user_id", userId).eq("id", id).single());
+  return unwrap(await db().from("ideas").select("id,text,status,created_at").eq("user_id", userId).eq("id", id).single());
 });
 
 export const PATCH = route<Ctx>(async (req, userId, ctx) => {
   const { id } = await ctx.params;
   const input = IdeaPatch.parse(await req.json());
-  return unwrap(await db().from("ideas").update(input).eq("user_id", userId).eq("id", id).select().single());
+  return unwrap(await db().from("ideas").update(input).eq("user_id", userId).eq("id", id).select("id,text,status,created_at").single());
 });
 
 export const DELETE = route<Ctx>(async (_req, userId, ctx) => {
