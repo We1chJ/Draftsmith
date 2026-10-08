@@ -5,7 +5,7 @@
   --color-surface: #ffffff;
   --color-ink: #1e1b18;
   --color-ink-soft: #5e584f;
-  --color-ink-faint: #8f887c;
+  --color-ink-faint: #766f63;
   --color-line: #e8e3d9;
   --color-line-strong: #cfc8bb;
 
@@ -228,6 +228,22 @@ h3 {
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* Touch screens: 44px tap targets, and 16px fields so iOS doesn't zoom on focus.
+   Unlayered on purpose so it wins over size utilities like min-h-9 or text-[15px]. */
+@media (pointer: coarse) {
+  .btn,
+  .btn-primary,
+  .btn-ghost,
+  .btn-accent {
+    min-height: 44px;
+  }
+  input,
+  textarea,
+  select {
+    font-size: 16px;
   }
 }
 

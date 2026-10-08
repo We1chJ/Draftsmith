@@ -36,7 +36,7 @@ export function Nav() {
                 href={s.href}
                 data-section={s.section}
                 aria-current={active ? "page" : undefined}
-                className={`relative rounded-[10px] px-3 py-1.5 text-[14px] transition-colors duration-200 ${
+                className={`relative inline-flex shrink-0 items-center rounded-[10px] px-3 py-1.5 text-[14px] transition-colors duration-200 [@media(pointer:coarse)]:min-h-11 ${
                   active ? "font-semibold text-(--accent-ink)" : "text-ink-soft hover:text-ink"
                 }`}
               >

@@ -6,7 +6,7 @@ export const GET = route(async (req, userId) => {
   const status = new URL(req.url).searchParams.get("status");
   let q = db()
     .from("posts")
-    .select("id,idea_id,title,text,status,origin,published_at,created_at,updated_at,generating,error,post_images(count)")
+    .select("id,idea_id,title,text,status,origin,published_at,scheduled_at,created_at,updated_at,generating,error,post_images(count)")
     .eq("user_id", userId)
     .order("updated_at", { ascending: false });
   // Published history has its own route; this list is the working set.

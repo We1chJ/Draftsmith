@@ -96,7 +96,7 @@ export default function IdeasPage() {
   }
 
   return (
-    <>
+    <div className="mx-auto max-w-2xl">
       <PageHeader
         mark="Ideas"
         subtitle="Drop in a thought, long or short. It's drafted in your voice in the background and lands in Drafts."
@@ -171,6 +171,8 @@ export default function IdeasPage() {
           {ideas?.map((idea) => {
             const draft = latestDraft(idea);
             const failed = !draft || (draft.error && !draft.text) || isStuck(draft);
+            // Normally the idea is deleted once its draft is written; if that cleanup was missed, say so.
+            const leftover = !failed && !draft.generating && !!draft.text;
             return (
               <motion.article
                 key={idea.id}
@@ -193,17 +195,25 @@ export default function IdeasPage() {
                       </button>
                     )}
                   </span>
+                ) : leftover ? (
+                  <span className="inline-flex items-center gap-2 text-[13px] text-ink-soft">
+                    Already drafted.
+                    <Link href={`/write?post=${draft.id}`} className="font-medium underline underline-offset-2">
+                      Open
+                    </Link>
+                  </span>
                 ) : (
                   <span className="inline-flex items-center gap-2 text-[13px] text-(--accent-ink)">
                     <span className="spinner" /> Drafting…
                   </span>
                 )}
                 {failed && <ConfirmButton label="Discard" onConfirm={() => remove(idea.id)} />}
+                {leftover && <ConfirmButton label="Remove" onConfirm={() => remove(idea.id)} />}
               </motion.article>
             );
           })}
         </AnimatePresence>
       </div>
-    </>
+    </div>
   );
 }

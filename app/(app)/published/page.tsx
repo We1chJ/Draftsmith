@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { CardSkeletons } from "@/components/card-skeletons";
 import { ConfirmButton } from "@/components/confirm-button";
 import { Pen, Plus, X } from "@/components/icons";
 import { AnimatePresence, Rise, Swap, motion, soft } from "@/components/motion";
@@ -115,7 +116,13 @@ export default function PublishedPage() {
         </button>
       </PageHeader>
 
-      {posts === null && !error && <p className="text-[14px] text-ink-faint">Loading…</p>}
+      {posts === null && !error && (
+        <CardSkeletons
+          count={6}
+          label="Loading published posts"
+          className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+        />
+      )}
       {error && !open && (
         <p role="alert" className="mb-4 rounded-[10px] bg-coral-soft px-3 py-2 text-[14px] text-coral-ink">
           {error}
@@ -123,7 +130,7 @@ export default function PublishedPage() {
       )}
 
       {posts && posts.length === 0 && (
-        <Rise className="card flex flex-col items-start gap-3 border-dashed p-8">
+        <Rise className="card mx-auto flex max-w-xl flex-col items-center gap-3 border-dashed p-10 text-center">
           <span className="grid h-10 w-10 place-items-center rounded-full bg-(--accent-soft) text-(--accent-ink)">
             <Pen size={18} />
           </span>
@@ -140,7 +147,7 @@ export default function PublishedPage() {
       )}
 
       {/* Tiles */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <AnimatePresence initial={false} mode="popLayout">
           {sorted.map((p, i) => (
             <motion.button

@@ -68,7 +68,7 @@ export default function VoicePage() {
   const count = voice?.published_count ?? 0;
 
   return (
-    <>
+    <div className="mx-auto max-w-5xl">
       <PageHeader
         mark="Voice"
         subtitle="Two things shape every draft: what you tell the writer, and what it notices in your published posts."
@@ -186,6 +186,6 @@ export default function VoicePage() {
           )}
         </section>
       </div>
-    </>
+    </div>
   );
 }

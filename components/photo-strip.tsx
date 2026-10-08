@@ -97,7 +97,7 @@ export function PhotoStrip({
                   <button
                     type="button"
                     aria-label="Remove photo"
-                    className="absolute top-1.5 right-1.5 grid h-7 w-7 cursor-pointer place-items-center rounded-full bg-ink/70 text-paper opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                    className="absolute top-1.5 right-1.5 grid h-7 w-7 cursor-pointer place-items-center rounded-full bg-ink/70 text-paper opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:h-9 [@media(hover:none)]:w-9 [@media(hover:none)]:opacity-100"
                     onClick={() => remove(img)}
                   >
                     <X size={14} />

@@ -13,7 +13,17 @@ export const GET = route<Ctx>(async (_req, userId, ctx) => {
 export const PATCH = route<Ctx>(async (req, userId, ctx) => {
   const { id } = await ctx.params;
   const input = PostPatch.parse(await req.json());
-  return unwrap(await db().from("posts").update(input).eq("user_id", userId).eq("id", id).select().single());
+  // Scheduled or publishing posts are locked; unschedule first to edit.
+  return unwrap(
+    await db()
+      .from("posts")
+      .update(input)
+      .eq("user_id", userId)
+      .eq("id", id)
+      .in("status", ["draft", "failed"])
+      .select()
+      .single(),
+  );
 });
 
 // The DB trigger refuses to delete published posts.

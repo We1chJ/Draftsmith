@@ -19,6 +19,8 @@ export type Post = {
   published_at: string | null;
   created_at: string;
   updated_at: string;
+  scheduled_at?: string | null;
+  linkedin_post_id?: string | null;
   /** True while the draft is being written in the background. */
   generating?: boolean;
   error?: string | null;
@@ -52,3 +54,7 @@ export type PostImage = {
 export const POST_MAX_CHARS = 3000;
 /** How many published posts go into every prompt verbatim. */
 export const EXAMPLE_LIMIT = 10;
+
+export type LinkedInStatus =
+  | { connected: false; expired?: boolean; expires_at?: string; days_left?: number }
+  | { connected: true; expired: false; expires_at: string; days_left: number };

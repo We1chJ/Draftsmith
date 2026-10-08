@@ -12,7 +12,7 @@ Turns raw ideas into LinkedIn posts in your own voice. Single-user tool, Next.js
 
 Every generation prompt = your instructions → the observed-style summary → your 10 newest published posts verbatim → the idea. Instructions take priority if anything conflicts.
 
-Publishing to LinkedIn, scheduling, and the publish log are planned (Phase 2) and not built yet.
+**Posting to LinkedIn**: from a draft, "Post now" (with a confirm step) or pick a time and "Schedule". Text and photos both go out; photos are uploaded to LinkedIn's Images API first (1 photo = single image, 2–20 = gallery). Scheduled posts are sent by `/api/cron/publish`, which a scheduler must call every few minutes with the `CRON_SECRET`. Every attempt is written to `publish_log`; a post LinkedIn accepted is never retried, and one stuck "publishing" for 15 minutes is flagged for a manual check instead of retried. LinkedIn tokens last 60 days and are stored AES-256-GCM encrypted; the Drafts page warns 7 days before expiry.
 
 ## Setup
 
@@ -31,6 +31,9 @@ npm run dev
 | `SUPABASE_SERVICE_ROLE_KEY` | Same page. Server-only; bypasses RLS. |
 | `OPENAI_API_KEY` | platform.openai.com |
 | `OPENAI_MODEL` | Optional, defaults to `gpt-4.1-mini` |
+| `TOKEN_ENCRYPTION_KEY` | 32 random bytes, base64. Encrypts LinkedIn tokens. |
+| `CRON_SECRET` | Random string; the scheduler sends it to `/api/cron/publish` |
+| `LINKEDIN_CLIENT_ID` / `LINKEDIN_CLIENT_SECRET` | LinkedIn developer app → Auth tab |
 
 Supabase project settings that must be on:
 
@@ -53,6 +56,8 @@ lib/data.ts       published history and voice loading
 lib/voice-summary.ts  refreshes the observed-style summary; staleness check
 lib/images.ts     photo upload/list/remove against the draftsmith-images bucket
 lib/platforms.ts  LinkedIn limits used for enforcement and the lookup card
+lib/linkedin.ts   OAuth, image upload, post creation, publish-now and the due-post sweep
+lib/crypto.ts     AES-256-GCM for tokens at rest
 proxy.ts          refreshes the session cookie, redirects signed-out visits to /login
 components/       logo, icons, motion helpers, nav, preview
 ```

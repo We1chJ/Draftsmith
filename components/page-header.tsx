@@ -1,4 +1,5 @@
 // Section heading with the marker swipe behind one word. `mark` is the highlighted word.
+// Title, subtitle and actions stack on the page's center line.
 export function PageHeader({
   mark,
   rest,
@@ -11,13 +12,13 @@ export function PageHeader({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div className="mb-8 flex flex-col items-center gap-4 text-center">
       <div>
         <h1 className="text-[32px] leading-none font-semibold sm:text-[38px]">
           <span className="hl">{mark}</span>
           {rest && <span> {rest}</span>}
         </h1>
-        {subtitle && <p className="mt-2.5 max-w-prose text-[15px] text-ink-soft">{subtitle}</p>}
+        {subtitle && <p className="mx-auto mt-3 max-w-prose text-[15px] text-ink-soft">{subtitle}</p>}
       </div>
       {children && <div className="flex items-center gap-2">{children}</div>}
     </div>
