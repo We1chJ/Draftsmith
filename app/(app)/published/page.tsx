@@ -6,8 +6,9 @@ import { ConfirmButton } from "@/components/confirm-button";
 import { Pen, Plus, X } from "@/components/icons";
 import { AnimatePresence, Rise, Swap, motion, soft } from "@/components/motion";
 import { PageHeader } from "@/components/page-header";
+import { PostPhotos } from "@/components/post-photos";
 import { api } from "@/lib/client";
-import type { Post } from "@/lib/types";
+import type { Post, PostImage } from "@/lib/types";
 import { POST_MAX_CHARS } from "@/lib/types";
 
 type CardForm = { title: string; text: string; published_on: string };
@@ -31,6 +32,7 @@ export default function PublishedPage() {
   const [card, setCard] = useState<CardForm>(EMPTY_CARD);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [photos, setPhotos] = useState<{ postId: string; list: PostImage[] } | null>(null);
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -42,12 +44,29 @@ export default function PublishedPage() {
     };
   }, []);
 
-  // Close on Escape.
+  // While the pop-up is open: close on Escape, and keep the page behind it from scrolling.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(null);
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = overflow;
+    };
+  }, [open]);
+
+  // Photos for the post being read.
+  useEffect(() => {
+    if (!open || open === "new") return;
+    let stale = false;
+    api<PostImage[]>(`/api/posts/${open}/images`)
+      .then((list) => !stale && setPhotos({ postId: open, list }))
+      .catch(() => {});
+    return () => {
+      stale = true;
+    };
   }, [open]);
 
   // Debounced: a burst of changes triggers one summary refresh. Generation also refreshes
@@ -104,6 +123,7 @@ export default function PublishedPage() {
       )
     : [];
   const viewing = open && open !== "new" ? sorted.find((p) => p.id === open) : null;
+  const viewingPhotos = viewing && photos?.postId === viewing.id ? photos.list : [];
 
   return (
     <>
@@ -152,7 +172,7 @@ export default function PublishedPage() {
           {sorted.map((p, i) => (
             <motion.button
               key={p.id}
-              layoutId={`tile-${p.id}`}
+              layout
               type="button"
               onClick={() => setOpen(p.id)}
               initial={{ opacity: 0, y: 12 }}
@@ -160,7 +180,7 @@ export default function PublishedPage() {
               exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.14 } }}
               transition={{ ...soft, delay: Math.min(i, 8) * 0.03 }}
               whileHover={{ y: -2 }}
-              className="card card-hover flex cursor-pointer flex-col text-left"
+              className="card card-hover flex min-w-0 cursor-pointer flex-col text-left [overflow-wrap:anywhere]"
             >
               <h3 className="text-[16px] leading-snug font-semibold">{p.title ?? "Untitled"}</h3>
               <p className="mt-2 line-clamp-5 text-[13.5px] leading-[1.55] whitespace-pre-wrap text-ink-soft">{p.text}</p>
@@ -178,19 +198,24 @@ export default function PublishedPage() {
         {open && (
           <motion.div
             key="backdrop"
-            className="fixed inset-0 z-30 flex items-start justify-center overflow-y-auto bg-ink/35 p-4 backdrop-blur-sm sm:items-center"
+            className="fixed inset-0 z-30 overflow-y-auto overscroll-contain bg-ink/35 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, transition: { duration: 0.15 } }}
             onClick={() => setOpen(null)}
           >
+            {/* min-h-full + items-center centers short cards; tall ones start at the top and scroll. */}
+            <div className="flex min-h-full items-start justify-center p-4 sm:items-center sm:p-8">
             {viewing ? (
               <motion.article
-                layoutId={`tile-${viewing.id}`}
+                key={viewing.id}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="post-title"
-                className="card relative my-6 w-full max-w-2xl p-7 shadow-[0_24px_60px_-20px_rgba(30,27,24,0.35)] sm:my-0"
+                initial={{ opacity: 0, y: 16, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.98, transition: { duration: 0.15 } }}
+                className="card relative w-full max-w-2xl p-6 shadow-[0_24px_60px_-20px_rgba(30,27,24,0.35)] [overflow-wrap:anywhere] sm:p-7"
                 transition={soft}
                 onClick={(e) => e.stopPropagation()}
               >
@@ -210,7 +235,12 @@ export default function PublishedPage() {
                   {viewing.title ?? "Untitled"}
                 </h2>
                 <p className="mt-4 text-[15.5px] leading-[1.65] whitespace-pre-wrap">{viewing.text}</p>
-                <div className="mt-6 flex items-center justify-between border-t border-line pt-4">
+                {viewingPhotos.length > 0 && (
+                  <div className="mt-5">
+                    <PostPhotos images={viewingPhotos} />
+                  </div>
+                )}
+                <div className="mt-6 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-4">
                   <span className="text-[12px] text-ink-faint">Published posts can&apos;t be edited.</span>
                   <ConfirmButton label="Remove from history" onConfirm={() => removePost(viewing.id)} />
                 </div>
@@ -226,7 +256,7 @@ export default function PublishedPage() {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 8, scale: 0.98, transition: { duration: 0.15 } }}
                 transition={soft}
-                className="card relative my-6 w-full max-w-2xl space-y-4 p-7 shadow-[0_24px_60px_-20px_rgba(30,27,24,0.35)] sm:my-0"
+                className="card relative w-full max-w-2xl space-y-4 p-6 shadow-[0_24px_60px_-20px_rgba(30,27,24,0.35)] sm:p-7"
                 onClick={(e) => e.stopPropagation()}
               >
                 <button
@@ -304,6 +334,7 @@ export default function PublishedPage() {
                 </div>
               </motion.form>
             )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
