@@ -58,3 +58,15 @@ export const EXAMPLE_LIMIT = 10;
 export type LinkedInStatus =
   | { connected: false; expired?: boolean; expires_at?: string; days_left?: number }
   | { connected: true; expired: false; expires_at: string; days_left: number };
+
+export type DiscoverySource = { title: string; url: string };
+
+/** A news-based post idea from a Discover search. Lives only in the page until it's added or the page closes. */
+export type Discovery = {
+  headline: string;
+  summary: string;
+  angle: string;
+  news_date: string | null;
+  sources: DiscoverySource[];
+  image_url: string | null;
+};

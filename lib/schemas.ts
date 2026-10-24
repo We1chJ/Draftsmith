@@ -44,3 +44,7 @@ export const RewriteInput = z.object({
   preset: z.enum(Object.keys(REWRITE_PRESETS) as [keyof typeof REWRITE_PRESETS]).optional(),
   instruction: z.string().trim().optional(),
 });
+
+export const DiscoverInput = z.object({
+  brief: z.string().trim().min(1, "Describe what to look for first.").max(2000),
+});

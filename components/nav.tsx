@@ -7,6 +7,7 @@ import { Wordmark } from "@/components/logo";
 import { soft } from "@/components/motion";
 
 export const SECTIONS = [
+  { href: "/discover", label: "Discover", section: "discover" },
   { href: "/ideas", label: "Ideas", section: "ideas" },
   { href: "/posts", label: "Drafts", section: "posts" },
   { href: "/published", label: "Published", section: "published" },

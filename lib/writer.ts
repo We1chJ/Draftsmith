@@ -46,7 +46,7 @@ function systemPrompt(authorName: string, voice: Voice): string {
   ].join("\n\n");
 }
 
-async function ask<T extends z.ZodType>(system: string, user: string, schema: T): Promise<z.infer<T>> {
+export async function ask<T extends z.ZodType>(system: string, user: string, schema: T): Promise<z.infer<T>> {
   const response = await client.responses.parse({
     model: MODEL,
     instructions: system,

@@ -35,7 +35,8 @@
 
 /* Each section owns a highlighter color. Set via data-section on the page wrapper. */
 :root,
-[data-section="write"] {
+[data-section="write"],
+[data-section="discover"] {
   --accent: var(--color-sky);
   --accent-soft: var(--color-sky-soft);
   --accent-ink: var(--color-sky-ink);
