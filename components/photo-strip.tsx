@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { Image as ImageIcon, X } from "@/components/icons";
+import { useCallback, useRef, useState } from "react";
+import { Image as ImageIcon, Search, X } from "@/components/icons";
 import { AnimatePresence, motion, soft } from "@/components/motion";
+import { type FoundPhoto, PhotoSearch } from "@/components/photo-search";
 import { upload, api } from "@/lib/client";
 import { LINKEDIN } from "@/lib/platforms";
 import type { PostImage } from "@/lib/types";
@@ -27,6 +28,8 @@ export function PhotoStrip({
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState("");
   const [postId, setPostId] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const closeSearch = useCallback(() => setSearchOpen(false), []);
 
   const remaining = LINKEDIN.maxImages - images.length;
 
@@ -61,6 +64,15 @@ export function PhotoStrip({
   async function setAlt(img: PostImage, alt: string) {
     const id = postId ?? (await ensurePostId());
     onChange(await api<PostImage[]>(`/api/posts/${id}/images/${img.id}`, { method: "PATCH", body: { alt } }));
+  }
+
+  // A photo picked in search is downloaded and stored by the server, same as an upload.
+  async function attachFound(photo: FoundPhoto) {
+    const id = postId ?? (await ensurePostId());
+    setPostId(id);
+    onChange(
+      await api<PostImage[]>(`/api/posts/${id}/images/from-url`, { body: { url: photo.url, alt: photo.title || null } }),
+    );
   }
 
   async function remove(img: PostImage) {
@@ -117,28 +129,34 @@ export function PhotoStrip({
       </AnimatePresence>
 
       {remaining > 0 && (
-        <button
-          type="button"
-          disabled={disabled || busy}
-          onClick={() => inputRef.current?.click()}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragging(true);
-          }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragging(false);
-            add(e.dataTransfer.files);
-          }}
-          className={`flex w-full cursor-pointer items-center justify-center gap-2 rounded-[10px] border border-dashed px-3 py-3 text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-            dragging ? "border-(--accent) bg-(--accent-soft) text-(--accent-ink)" : "border-line text-ink-soft hover:border-line-strong hover:bg-paper"
-          }`}
-        >
-          {busy ? <span className="spinner" /> : <ImageIcon size={16} />}
-          {busy ? "Uploading" : images.length ? "Add more photos" : "Drop photos here, or click to choose"}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={disabled || busy}
+            onClick={() => inputRef.current?.click()}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragging(false);
+              add(e.dataTransfer.files);
+            }}
+            className={`flex min-w-48 flex-1 cursor-pointer items-center justify-center gap-2 rounded-[10px] border border-dashed px-3 py-3 text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+              dragging ? "border-(--accent) bg-(--accent-soft) text-(--accent-ink)" : "border-line text-ink-soft hover:border-line-strong hover:bg-paper"
+            }`}
+          >
+            {busy ? <span className="spinner" /> : <ImageIcon size={16} />}
+            {busy ? "Uploading" : images.length ? "Add more photos" : "Drop photos here, or click to choose"}
+          </button>
+          <button type="button" className="btn" disabled={disabled} onClick={() => setSearchOpen(true)}>
+            <Search size={16} /> Find photos
+          </button>
+        </div>
       )}
+      <PhotoSearch open={searchOpen} onClose={closeSearch} onPick={attachFound} remaining={remaining} />
       <input
         ref={inputRef}
         type="file"
