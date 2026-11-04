@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { Image as ImageIcon, Search, X } from "@/components/icons";
+import { Image as ImageIcon, Pen, Search, X } from "@/components/icons";
 import { AnimatePresence, motion, soft } from "@/components/motion";
+import { PhotoEditor } from "@/components/photo-editor";
 import { type FoundPhoto, PhotoSearch } from "@/components/photo-search";
 import { upload, api } from "@/lib/client";
 import { LINKEDIN } from "@/lib/platforms";
@@ -30,6 +31,7 @@ export function PhotoStrip({
   const [postId, setPostId] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const closeSearch = useCallback(() => setSearchOpen(false), []);
+  const [editing, setEditing] = useState<{ postId: string; image: PostImage } | null>(null);
 
   const remaining = LINKEDIN.maxImages - images.length;
 
@@ -75,6 +77,12 @@ export function PhotoStrip({
     );
   }
 
+  async function edit(img: PostImage) {
+    const id = postId ?? (await ensurePostId());
+    setPostId(id);
+    setEditing({ postId: id, image: img });
+  }
+
   async function remove(img: PostImage) {
     const id = postId ?? (await ensurePostId());
     onChange(images.filter((i) => i.id !== img.id));
@@ -114,6 +122,16 @@ export function PhotoStrip({
                   >
                     <X size={14} />
                   </button>
+                  {!disabled && (
+                    <button
+                      type="button"
+                      aria-label="Edit photo: black out or pixelate parts"
+                      className="absolute top-1.5 left-1.5 inline-flex h-7 cursor-pointer items-center gap-1 rounded-full bg-ink/70 px-2.5 text-[12px] font-medium text-paper opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:h-9 [@media(hover:none)]:opacity-100"
+                      onClick={() => edit(img)}
+                    >
+                      <Pen size={13} /> Edit
+                    </button>
+                  )}
                   <input
                     aria-label="Alt text"
                     className="w-full border-t border-line bg-surface px-2 py-1.5 text-[12px] outline-none placeholder:text-ink-faint focus:bg-paper"
@@ -157,6 +175,14 @@ export function PhotoStrip({
         </div>
       )}
       <PhotoSearch open={searchOpen} onClose={closeSearch} onPick={attachFound} remaining={remaining} />
+      {editing && (
+        <PhotoEditor
+          postId={editing.postId}
+          image={editing.image}
+          onClose={() => setEditing(null)}
+          onSaved={onChange}
+        />
+      )}
       <input
         ref={inputRef}
         type="file"

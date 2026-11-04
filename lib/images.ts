@@ -114,6 +114,59 @@ export async function removeImage(userId: string, postId: string, imageId: strin
   return listImages(userId, postId);
 }
 
+// The stored file itself, for the in-browser editor.
+export async function readImage(userId: string, postId: string, imageId: string): Promise<{ data: Blob; mime: string }> {
+  const row = unwrap(
+    await db()
+      .from("post_images")
+      .select("path,mime")
+      .eq("user_id", userId)
+      .eq("post_id", postId)
+      .eq("id", imageId)
+      .single(),
+  ) as { path: string; mime: string };
+  const { data, error } = await storage().download(row.path);
+  if (error || !data) throw new Error(error?.message ?? "Couldn't read the photo");
+  return { data, mime: row.mime };
+}
+
+// Swaps a photo's file, e.g. for a redacted version. Position and alt text stay; the old file is
+// deleted so the unedited original doesn't outlive the edit.
+export async function replaceImage(userId: string, postId: string, imageId: string, file: File): Promise<PostImage[]> {
+  if (!EXT[file.type]) throw new HttpError(400, "Only JPG, PNG and GIF are allowed.");
+  if (file.size > LINKEDIN.imageMaxBytes) {
+    throw new HttpError(400, `The edited photo is larger than ${LINKEDIN.imageMaxBytes / 1024 / 1024} MB.`);
+  }
+  const old = unwrap(
+    await db()
+      .from("post_images")
+      .select("path")
+      .eq("user_id", userId)
+      .eq("post_id", postId)
+      .eq("id", imageId)
+      .single(),
+  ) as { path: string };
+
+  const path = `${userId}/${postId}/${randomUUID()}.${EXT[file.type]}`;
+  const { error } = await storage().upload(path, Buffer.from(await file.arrayBuffer()), {
+    contentType: file.type,
+    upsert: false,
+  });
+  if (error) throw new Error(error.message);
+  const { error: updateError } = await db()
+    .from("post_images")
+    .update({ path, mime: file.type, bytes: file.size })
+    .eq("user_id", userId)
+    .eq("id", imageId);
+  if (updateError) {
+    await storage().remove([path]);
+    throw new Error(updateError.message);
+  }
+  const { error: removeError } = await storage().remove([old.path]);
+  if (removeError) throw new Error(`Saved, but the original couldn't be deleted: ${removeError.message}`);
+  return listImages(userId, postId);
+}
+
 // Called before a post row is deleted, so the files don't outlive it.
 export async function removeAllImages(userId: string, postId: string): Promise<void> {
   const rows = unwrap(

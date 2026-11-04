@@ -30,12 +30,13 @@ export function unwrap<T>({ data, error }: PgResult<T>): NonNullable<T> {
   return data as NonNullable<T>;
 }
 
-// Wraps a route handler: JSON response, auth, and error mapping.
+// Wraps a route handler: JSON response (or a Response passed through as is), auth, and error mapping.
 export function route<Ctx>(handler: (req: Request, userId: string, ctx: Ctx) => Promise<unknown>) {
   return async (req: Request, ctx: Ctx) => {
     try {
       const userId = await requireUserId();
       const result = await handler(req, userId, ctx);
+      if (result instanceof Response) return result;
       return result === undefined ? new Response(null, { status: 204 }) : Response.json(result);
     } catch (e) {
       if (e instanceof HttpError) return Response.json({ error: e.message }, { status: e.status });
